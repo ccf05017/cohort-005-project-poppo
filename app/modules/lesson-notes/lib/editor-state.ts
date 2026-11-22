@@ -1,10 +1,10 @@
 import { MAX_NOTE_LENGTH } from "~/lib/notes";
 
-export type SavedNote = { body: string; updatedAt: string } | null;
+export type SavedNote = { body: string; updatedAt: string };
 
 export type NoteEditorInput = {
   draft: string;
-  saved: SavedNote;
+  saved: SavedNote | null;
   saving: boolean;
   error: string | undefined;
 };
@@ -13,6 +13,7 @@ export type NoteEditorStatus =
   | { kind: "error"; message: string }
   | { kind: "saving" }
   | { kind: "too-long"; over: number }
+  | { kind: "cleared" }
   | { kind: "unsaved" }
   | { kind: "saved"; updatedAt: string }
   | { kind: "empty" };
@@ -33,13 +34,14 @@ export function noteEditorState({
   // The server trims before it stores, so trailing whitespace is not a change.
   const trimmed = draft.trim();
   const length = trimmed.length;
-  const tooLong = length > MAX_NOTE_LENGTH;
   const changed = trimmed !== (saved?.body ?? "");
-  const canSave = !saving && !tooLong && length > 0 && changed;
+  // The server refuses an empty note, so clearing one is a change Save cannot send.
+  const cleared = changed && length === 0;
+  const overBy = length - MAX_NOTE_LENGTH;
 
   return {
-    status: statusOf({ saved, saving, error, tooLong, changed, length }),
-    canSave,
+    status: statusOf({ saved, saving, error, changed, cleared, overBy }),
+    canSave: !saving && overBy <= 0 && changed && !cleared,
     length,
     max: MAX_NOTE_LENGTH,
   };
@@ -49,21 +51,19 @@ function statusOf({
   saved,
   saving,
   error,
-  tooLong,
   changed,
-  length,
-}: {
-  saved: SavedNote;
-  saving: boolean;
-  error: string | undefined;
-  tooLong: boolean;
+  cleared,
+  overBy,
+}: Pick<NoteEditorInput, "saved" | "saving" | "error"> & {
   changed: boolean;
-  length: number;
+  cleared: boolean;
+  overBy: number;
 }): NoteEditorStatus {
   if (saving) return { kind: "saving" };
-  if (tooLong) return { kind: "too-long", over: length - MAX_NOTE_LENGTH };
+  if (overBy > 0) return { kind: "too-long", over: overBy };
   if (error) return { kind: "error", message: error };
-  if (changed && length > 0) return { kind: "unsaved" };
+  if (cleared) return { kind: "cleared" };
+  if (changed) return { kind: "unsaved" };
   if (saved) return { kind: "saved", updatedAt: saved.updatedAt };
   return { kind: "empty" };
 }

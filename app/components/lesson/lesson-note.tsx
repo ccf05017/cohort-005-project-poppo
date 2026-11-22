@@ -11,7 +11,7 @@ import {
   type SavedNote,
 } from "~/modules/lesson-notes";
 
-export function LessonNote({ note }: { note: SavedNote }) {
+export function LessonNote({ note }: { note: SavedNote | null }) {
   const fetcher = useFetcher<{ ok: boolean; error?: string }>();
   const [draft, setDraft] = useState(note?.body ?? "");
   const { status, canSave, length, max } = describeNoteEditor({
@@ -95,6 +95,12 @@ function NoteStatus({ status }: { status: NoteEditorStatus }) {
         <span role="alert" className="text-sm text-destructive">
           {status.over} {status.over === 1 ? "character" : "characters"} over
           the limit
+        </span>
+      );
+    case "cleared":
+      return (
+        <span className="text-xs text-muted-foreground">
+          A note can't be empty. Write something to save it.
         </span>
       );
     case "unsaved":

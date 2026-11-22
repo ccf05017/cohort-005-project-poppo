@@ -53,10 +53,20 @@ describe("describeNoteEditor", () => {
     expect(state.canSave).toBe(false);
   });
 
-  it("keeps Save off when an existing note is cleared, since the server refuses an empty note", () => {
-    const state = describeNoteEditor({ draft: "", saved, ...idle });
-    expect(state.status).toEqual({ kind: "saved", updatedAt: saved.updatedAt });
+  it("says a cleared note cannot be saved, since the server refuses an empty note", () => {
+    const state = describeNoteEditor({ draft: "  ", saved, ...idle });
+    expect(state.status).toEqual({ kind: "cleared" });
     expect(state.canSave).toBe(false);
+  });
+
+  it("shows the server's error over the cleared hint", () => {
+    const state = describeNoteEditor({
+      draft: "",
+      saved,
+      saving: false,
+      error: "Nope",
+    });
+    expect(state.status).toEqual({ kind: "error", message: "Nope" });
   });
 
   it("reports saving and blocks a second submit", () => {
