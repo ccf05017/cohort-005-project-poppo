@@ -14,11 +14,13 @@ import {
 export function LessonNote({ note }: { note: SavedNote | null }) {
   const fetcher = useFetcher<{ ok: boolean; error?: string }>();
   const [draft, setDraft] = useState(note?.body ?? "");
+  // The server's error is about the draft it was sent, so editing clears it.
+  const [submitted, setSubmitted] = useState<string>();
   const { status, canSave, length, max } = describeNoteEditor({
     draft,
     saved: note,
     saving: fetcher.state !== "idle",
-    error: fetcher.data?.error,
+    error: draft === submitted ? fetcher.data?.error : undefined,
   });
 
   return (
@@ -26,7 +28,11 @@ export function LessonNote({ note }: { note: SavedNote | null }) {
       <CardContent className="p-6">
         <NoteHeader />
 
-        <fetcher.Form method="post" className="space-y-3">
+        <fetcher.Form
+          method="post"
+          className="space-y-3"
+          onSubmit={() => setSubmitted(draft)}
+        >
           <input type="hidden" name="intent" value="save-note" />
           <Textarea
             name="body"
